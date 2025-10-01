@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Video25 Backend API",
   "main": "api/index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "dev": "node api/index.js",
     "start": "node api/index.js"
