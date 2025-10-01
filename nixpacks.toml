@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "node api/index.js"
+
+[variables]
+NODE_ENV = "production"
