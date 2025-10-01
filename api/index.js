@@ -71,7 +71,23 @@ module.exports = app;
 
 // Railway 및 로컬 개발용 서버 시작
 if (require.main === module) {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`✅ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✅ Health check: http://0.0.0.0:${PORT}/api/health`);
+  });
+
+  server.on('error', (error) => {
+    console.error('❌ Server error:', error);
+    process.exit(1);
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('📡 SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
   });
 }
