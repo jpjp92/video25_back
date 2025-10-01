@@ -10,13 +10,20 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowedPattern = process.env.ALLOWED_ORIGINS || '*';
 
+    // 개발 환경이나 ALLOWED_ORIGINS가 *인 경우 모든 origin 허용
     if (allowedPattern === '*') {
       callback(null, true);
       return;
     }
 
+    // origin이 없는 경우 (curl, Postman 등) 허용
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
     // 1001vid25 포함된 vercel.app 도메인 체크
-    if (!origin || origin.includes('1001vid25') && origin.includes('vercel.app')) {
+    if (origin.includes('1001vid25') && origin.includes('vercel.app')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
