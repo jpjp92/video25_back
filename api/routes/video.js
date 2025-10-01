@@ -78,7 +78,7 @@ router.post('/analyze', upload.single('video'), async (req, res) => {
     };
     const mimeType = mimeTypeMap[ext] || req.file.mimetype;
 
-    console.log('📁 업로드된 파일:', req.file.originalname);
+    console.log('📁 업로드된 파일:', Buffer.from(req.file.originalname, 'latin1').toString('utf8'));
     console.log('📏 파일 크기:', (req.file.size / 1024 / 1024).toFixed(2) + 'MB');
     console.log('🎬 MIME 타입:', mimeType);
 
