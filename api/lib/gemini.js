@@ -222,6 +222,44 @@ peak_moment 시점의 프레임을 기준으로 다음 5가지 설명문을 작�
 
       const analysisResult = JSON.parse(jsonString);
 
+      // descriptions 배열 정규화 (잘못된 형식 수정)
+      if (analysisResult.descriptions && Array.isArray(analysisResult.descriptions)) {
+        analysisResult.descriptions = analysisResult.descriptions.map(item => {
+          // 이미 올바른 형식이면 그대로 반환
+          if (item.class && item.description && typeof item.description === 'string') {
+            return item;
+          }
+
+          // 잘못된 형식 수정: "class명": { "description": "..." } 형태
+          // 또는 문자열 키로 된 경우
+          if (typeof item === 'object' && !item.class) {
+            const keys = Object.keys(item);
+            if (keys.length > 0) {
+              const className = keys[0];
+              const value = item[className];
+
+              // 값이 객체이고 description을 포함하는 경우
+              if (typeof value === 'object' && value.description) {
+                return {
+                  class: className,
+                  description: value.description
+                };
+              }
+
+              // 값이 문자열인 경우
+              if (typeof value === 'string') {
+                return {
+                  class: className,
+                  description: value
+                };
+              }
+            }
+          }
+
+          return item;
+        });
+      }
+
       console.log('분석 결과 파싱 완료');
 
       return analysisResult;
