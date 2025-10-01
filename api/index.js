@@ -37,12 +37,12 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
+// Health check - Railway가 루트 경로로 체크할 수 있도록
 app.get('/', (req, res) => {
-  res.json({
+  res.status(200).json({
     message: 'Video25 API is running',
     version: '1.0.0',
-    status: 'ok'
+    status: 'healthy'
   });
 });
 
