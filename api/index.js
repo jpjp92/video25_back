@@ -62,9 +62,9 @@ app.use((err, req, res, next) => {
 // Vercel용 export (serverless function)
 module.exports = app;
 
-// 로컬 개발용
-if (process.env.NODE_ENV !== 'production') {
-  app.listen(PORT, () => {
+// Railway 및 로컬 개발용 서버 시작
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
