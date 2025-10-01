@@ -3,35 +3,10 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
-// CORS 설정 - 1001vid25 포함된 도메인 허용
-app.use(cors({
-  origin: (origin, callback) => {
-    const allowedPattern = process.env.ALLOWED_ORIGINS || '*';
-
-    // 개발 환경이나 ALLOWED_ORIGINS가 *인 경우 모든 origin 허용
-    if (allowedPattern === '*') {
-      callback(null, true);
-      return;
-    }
-
-    // origin이 없는 경우 (curl, Postman 등) 허용
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    // 1001vid25 포함된 vercel.app 도메인 체크
-    if (origin.includes('1001vid25') && origin.includes('vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  credentials: true
-}));
+// CORS 설정 - 모든 origin 허용 (Railway 테스트용)
+app.use(cors());
 
 // Request logging middleware
 app.use((req, res, next) => {
