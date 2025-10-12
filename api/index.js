@@ -1,3 +1,5 @@
+//  api/index.js
+
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -5,7 +7,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS 설정 - 모든 origin 허용 (Railway 테스트용)
+// CORS 설정 - 모든 origin 허용 (테스트용)
 app.use(cors());
 
 // Request logging middleware
@@ -18,7 +20,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check - Railway가 루트 경로로 체크할 수 있도록
+// Health check - 루트 경로로 체크할 수 있도록
 app.get('/', (req, res) => {
   res.status(200).json({
     message: 'Video25 API is running',
