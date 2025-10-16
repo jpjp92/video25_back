@@ -1,13 +1,21 @@
 # Video25 Backend API
 
-비디오 분석 및 감정 설명문 생성을 위한 Node.js 백엔드 API
+비디오 분석, 감정 인식, 얼굴 특징 추출 및 설명문 생성을 위한 Node.js 백엔드 API
 
 ## 🚀 시작하기
+
+### 필수 요구사항
+
+- Node.js >= 18.0.0
+- FFmpeg (자동 설치됨)
+- npm 또는 pnpm
 
 ### 설치
 
 ```bash
 npm install
+# 또는
+pnpm install
 ```
 
 ### 환경 설정
@@ -15,9 +23,8 @@ npm install
 `.env` 파일을 생성하고 다음 내용을 추가하세요:
 
 ```env
-PORT=3000
+PORT=3001
 NODE_ENV=development
-ALLOWED_ORIGINS=*
 ```
 
 ### 서버 실행
@@ -30,7 +37,12 @@ npm run dev
 npm start
 ```
 
-서버는 `http://localhost:3000`에서 실행됩니다.
+서버는 `http://localhost:3001`에서 실행됩니다.
+
+**Health Check:**
+```bash
+curl http://localhost:3001/api/health
+```
 
 ---
 
@@ -40,20 +52,20 @@ npm start
 
 **Endpoint:** `POST /api/video/analyze`
 
-비디오 파일을 분석하여 주인공 정보, VA 감정값, 5가지 설명문을 생성합니다.
+비디오 파일을 분석하여 주인공의 감정, 얼굴 특징, 분류 정보 및 설명문을 생성합니다.
 
 #### 요청 예시
 
 **방법 1: Body에 API 키 포함**
 ```bash
-curl -X POST http://localhost:3000/api/video/analyze \
+curl -X POST http://localhost:3001/api/video/analyze \
   -F "video=@/path/to/video.mp4" \
   -F "apiKey=YOUR_GEMINI_API_KEY"
 ```
 
 **방법 2: 헤더에 API 키 포함**
 ```bash
-curl -X POST http://localhost:3000/api/video/analyze \
+curl -X POST http://localhost:3001/api/video/analyze \
   -H "x-api-key: YOUR_GEMINI_API_KEY" \
   -F "video=@/path/to/video.mp4"
 ```
@@ -74,43 +86,69 @@ curl -X POST http://localhost:3000/api/video/analyze \
     "meta": {
       "main_character": {
         "description": "주인공의 간단한 설명",
-        "first_appearance_time": "00 00.00"
+        "first_appearance_time": 0.0
       },
-      "video_duration": "00 22.99",
+      "video_duration": 22.99,
       "subject_time": [
         {
-          "start_time": "00 08.50",
-          "end_time": "00 09.50",
+          "start_time": 8.5,
+          "end_time": 9.5,
           "frame_number": 255,
           "total_frames": 690,
           "fps_used": 30
         }
       ]
     },
-    "VA": {
-      "valence": -2,
-      "arousal": 2
-    },
-    "descriptions": [
+    "class_type": [
       {
-        "class": "상황 설명",
-        "description": "주인공이 처한 상황에 대한 설명"
+        "category": "Male/Female",
+        "label": "여자"
       },
       {
-        "class": "배경/분위기",
-        "description": "배경과 분위기에 대한 설명"
+        "category": "EmomainCategory",
+        "label": "긍정"
       },
       {
-        "class": "주인공 얼굴 묘사",
-        "description": "얼굴 특징에 대한 설명"
+        "category": "EmoCategory",
+        "label": "즐거움"
       },
       {
-        "class": "주인공 의상 묘사",
-        "description": "의상에 대한 설명"
+        "category": "Face",
+        "label": "둥근형"
       },
       {
-        "class": "주인공 행동 묘사",
-        "description": "행동에 대한 설명"
+        "category": "EyeShape",
+        "label": "수평형"
+      },
+      {
+        "category": "NoseShape",
+        "label": "직선형"
+      },
+      {
+        "category": "MouthShape",
+        "label": "곡선형"
+      }
+    ],
+    "subject_description": [
+      {
+        "category": "상황",
+        "description": "{{Male/Female}}가 야외에서..."
+      },
+      {
+        "category": "위치",
+        "description": "{{Male/Female}}는 화면 중앙에..."
+      },
+      {
+        "category": "얼굴",
+        "description": "{{EmoCategory}}하는 {{Male/Female}}는 {{Face}} 얼굴에..."
+      },
+      {
+        "category": "복장",
+        "description": "{{Male/Female}}는 캐주얼한..."
+      },
+      {
+        "category": "감정",
+        "description": "{{Male/Female}}는 {{EmoCategory}} 상태이며 {{EmomainCategory}}적인..."
       }
     ]
   }
@@ -123,38 +161,30 @@ curl -X POST http://localhost:3000/api/video/analyze \
 
 **Endpoint:** `POST /api/video/analyzer-desc`
 
-5개의 설명문을 문법적으로 개선하고 하나의 전체 설명문으로 통합합니다.
+템플릿 변수를 실제 값으로 치환하고, 5개의 설명문을 문법적으로 개선하며, 하나의 완전한 설명문으로 통합합니다.
 
 #### 요청 예시
 
-**방법 1: Body에 API 키 포함**
 ```bash
-curl -X POST http://localhost:3000/api/video/analyzer-desc \
-  -H "Content-Type: application/json" \
-  -d '{
-    "apiKey": "YOUR_GEMINI_API_KEY",
-    "descriptions": [
-      {"class": "상황 설명", "description": "..."},
-      {"class": "배경/분위기", "description": "..."},
-      {"class": "주인공 얼굴 묘사", "description": "..."},
-      {"class": "주인공 의상 묘사", "description": "..."},
-      {"class": "주인공 행동 묘사", "description": "..."}
-    ]
-  }'
-```
-
-**방법 2: 헤더에 API 키 포함**
-```bash
-curl -X POST http://localhost:3000/api/video/analyzer-desc \
+curl -X POST http://localhost:3001/api/video/analyzer-desc \
   -H "Content-Type: application/json" \
   -H "x-api-key: YOUR_GEMINI_API_KEY" \
   -d '{
-    "descriptions": [
-      {"class": "상황 설명", "description": "..."},
-      {"class": "배경/분위기", "description": "..."},
-      {"class": "주인공 얼굴 묘사", "description": "..."},
-      {"class": "주인공 의상 묘사", "description": "..."},
-      {"class": "주인공 행동 묘사", "description": "..."}
+    "class_type": [
+      {"category": "Male/Female", "label": "여자"},
+      {"category": "EmomainCategory", "label": "긍정"},
+      {"category": "EmoCategory", "label": "즐거움"},
+      {"category": "Face", "label": "둥근형"},
+      {"category": "EyeShape", "label": "수평형"},
+      {"category": "NoseShape", "label": "직선형"},
+      {"category": "MouthShape", "label": "곡선형"}
+    ],
+    "subject_description": [
+      {"category": "상황", "description": "{{Male/Female}}가 야외에서..."},
+      {"category": "위치", "description": "{{Male/Female}}는 화면 중앙에..."},
+      {"category": "얼굴", "description": "{{EmoCategory}}하는 {{Male/Female}}는..."},
+      {"category": "복장", "description": "{{Male/Female}}는 캐주얼한..."},
+      {"category": "감정", "description": "{{Male/Female}}는 {{EmoCategory}} 상태이며..."}
     ]
   }'
 ```
@@ -164,7 +194,8 @@ curl -X POST http://localhost:3000/api/video/analyzer-desc \
 | 파라미터 | 타입 | 필수 | 설명 |
 |---------|------|------|------|
 | `apiKey` | String | ✅ | Gemini API 키 (body 또는 헤더) |
-| `descriptions` | Array | ✅ | 5개의 설명문 배열 (정확히 5개) |
+| `class_type` | Array | ✅ | 7개의 분류 정보 배열 |
+| `subject_description` | Array | ✅ | 5개의 설명문 배열 (템플릿 포함) |
 
 #### Response
 
@@ -172,29 +203,80 @@ curl -X POST http://localhost:3000/api/video/analyzer-desc \
 {
   "success": true,
   "data": {
-    "descriptions": [
+    "subject_description": [
       {
-        "class": "상황 설명",
-        "description": "개선된 상황 설명"
+        "category": "상황",
+        "description": "여자가 야외 테라스에서 맥주를 발견하고 즐겁게 웃고 있는 장면이다."
       },
       {
-        "class": "배경/분위기",
-        "description": "개선된 배경/분위기 설명"
+        "category": "위치",
+        "description": "여자는 화면 중앙에 위치해 있다."
       },
       {
-        "class": "주인공 얼굴 묘사",
-        "description": "개선된 얼굴 묘사"
+        "category": "얼굴",
+        "description": "즐거워하는 여자는 둥근형 얼굴에 수평형 눈, 직선형 코, 곡선형 입을 가지고 있다."
       },
       {
-        "class": "주인공 의상 묘사",
-        "description": "개선된 의상 묘사"
+        "category": "복장",
+        "description": "여자는 캐주얼한 흰색 레이스 상의를 입고 있다."
       },
       {
-        "class": "주인공 행동 묘사",
-        "description": "개선된 행동 묘사"
+        "category": "감정",
+        "description": "여자는 즐거움 상태이며 긍정적인 감정으로 보인다."
       }
     ],
-    "full_description": "5개 설명문을 하나로 합친 전체 설명문"
+    "explanation": "여자가 야외 테라스에서 맥주를 발견하고 즐겁게 웃고 있는 장면이다. 여자는 화면 중앙에 위치해 있다. 즐거워하는 여자는 둥근형 얼굴에 수평형 눈, 직선형 코, 곡선형 입을 가지고 있다. 여자는 캐주얼한 흰색 레이스 상의를 입고 있다. 여자는 즐거움 상태이며 긍정적인 감정으로 보인다."
+  }
+}
+```
+
+### 3️⃣ 프레임 캡처 API
+
+**Endpoint:** `POST /api/video/capture-frame`
+
+비디오에서 특정 프레임을 1920x1080 해상도로 캡처하고, 선택적으로 바운딩 박스나 포인트 오버레이를 추가할 수 있습니다.
+
+#### 요청 예시
+
+```bash
+curl -X POST http://localhost:3001/api/video/capture-frame \
+  -F "video=@/path/to/video.mp4" \
+  -F "frameNumber=255" \
+  -F "fps=30" \
+  -F "bbox1X=100" \
+  -F "bbox1Y=100" \
+  -F "bbox2X=500" \
+  -F "bbox2Y=600" \
+  -F "drawOverlay=true"
+```
+
+#### Request Parameters
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---------|------|------|------|
+| `video` | File | ✅ | 비디오 파일 |
+| `frameNumber` | Integer | ✅ | 캡처할 프레임 번호 (0부터 시작) |
+| `fps` | Integer | ❌ | 비디오 FPS (기본값: 30) |
+| `bbox1X`, `bbox1Y` | Integer | ❌ | 바운딩 박스 좌상단 좌표 |
+| `bbox2X`, `bbox2Y` | Integer | ❌ | 바운딩 박스 우하단 좌표 |
+| `x`, `y` | Integer | ❌ | 단일 포인트 좌표 |
+| `drawOverlay` | Boolean | ❌ | 오버레이 표시 여부 (기본값: false) |
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "frameNumber": 255,
+    "fps": 30,
+    "bbox": [
+      {"x": 100, "y": 100},
+      {"x": 500, "y": 600}
+    ],
+    "point": null,
+    "image": "data:image/png;base64,iVBORw0KGgoAAAANS...",
+    "resolution": "1920x1080"
   }
 }
 ```
@@ -209,14 +291,21 @@ POST /api/video/analyze
   ↓
 비디오 파일 업로드 + Gemini API 키
   ↓
-Response: meta + VA + descriptions
+Response: meta + class_type + subject_description
   ↓
 2단계: 설명문 개선 (선택사항)
 POST /api/video/analyzer-desc
   ↓
-1단계의 descriptions + Gemini API 키
+1단계의 class_type + subject_description + Gemini API 키
   ↓
-Response: 개선된 descriptions + full_description
+Response: 개선된 subject_description + explanation
+  ↓
+3단계: 프레임 캡처 (선택사항)
+POST /api/video/capture-frame
+  ↓
+비디오 파일 + frameNumber (meta.subject_time[0].frame_number)
+  ↓
+Response: Base64 인코딩된 이미지
 ```
 
 ---
@@ -246,26 +335,38 @@ Response: 개선된 descriptions + full_description
 
 ## 📊 Response 데이터 구조
 
-### VA (Valence-Arousal) 값
+### class_type (분류 정보)
 
-**Valence**: 감정의 긍정/부정 척도
-- `-3` ~ `+3` (정수)
-- 음수: 부정적 감정
-- 양수: 긍정적 감정
-- `0`: 중립
+7개의 필수 카테고리로 주인공의 특징을 분류합니다:
 
-**Arousal**: 감정의 강도 척도
-- `-3` ~ `+3` (정수)
-- 음수: 약한 감정
-- 양수: 강한 감정
-- `0`: 중간 강도
+| 카테고리 | 가능한 값 |
+|---------|----------|
+| **Male/Female** | "남자", "여자" |
+| **EmomainCategory** | "긍정", "부정", "중립" |
+| **EmoCategory** | "즐거움", "열의", "평온", "분노", "불안", "슬픔", "중립" |
+| **Face** | "둥근형", "각진형", "길쭉한형" |
+| **EyeShape** | "상향형", "수평형", "하향형" |
+| **NoseShape** | "직선형", "곡선형", "들창코형", "매부리코형" |
+| **MouthShape** | "직선형", "곡선형", "하트형" |
+
+### subject_description (설명문)
+
+5개의 필수 카테고리로 주인공을 설명합니다:
+
+1. **상황**: 주인공이 처한 상황
+2. **위치**: 화면에서의 위치
+3. **얼굴**: 얼굴 특징 (Face, EyeShape, NoseShape, MouthShape 포함)
+4. **복장**: 의상 및 스타일
+5. **감정**: 감정 상태 (EmoCategory, EmomainCategory 포함)
+
+템플릿 변수 (예: `{{Male/Female}}`, `{{EmoCategory}}`)는 `/analyzer-desc` API를 통해 실제 값으로 치환됩니다.
 
 ### Meta 정보
 
-- **main_character**: 주인공 설명 및 첫 등장 시간
-- **video_duration**: 비디오 전체 길이
+- **main_character**: 주인공 설명 및 첫 등장 시간 (초 단위)
+- **video_duration**: 비디오 전체 길이 (초 단위)
 - **subject_time**: 감정이 가장 강렬한 핵심 프레임 정보
-  - `start_time`, `end_time`: 1초 구간
+  - `start_time`, `end_time`: 1초 구간 (소수점 형식)
   - `frame_number`: 해당 프레임 번호
   - `total_frames`: 전체 프레임 수
   - `fps_used`: 사용된 FPS
@@ -295,11 +396,13 @@ Response: 개선된 descriptions + full_description
 
 ## 🛠️ 기술 스택
 
-- **Runtime**: Node.js
+- **Runtime**: Node.js >= 18.0.0
 - **Framework**: Express.js
 - **AI Model**: Google Gemini 2.5 Flash
+- **Video Processing**: FFmpeg, Sharp
+- **Face Detection**: TensorFlow.js, BlazeFace, Face Landmarks Detection
 - **File Upload**: Multer
-- **Deployment**: Vercel (Serverless)
+- **Deployment**: Railway / Vercel (Serverless)
 
 ---
 
@@ -308,30 +411,67 @@ Response: 개선된 descriptions + full_description
 ```
 video25_back/
 ├── api/
-│   ├── index.js              # Express 서버 진입점
+│   ├── index.js                 # Express 서버 진입점
 │   ├── lib/
-│   │   ├── gemini.js         # 비디오 분석 로직
-│   │   └── geminiAnalyzer.js # 설명문 개선 로직
+│   │   ├── categories.js        # 카테고리 정의 (얼굴형, 감정 등)
+│   │   ├── gemini.js            # 비디오 분석 로직 (Gemini API)
+│   │   ├── geminiAnalyzer.js    # 설명문 개선 로직
+│   │   ├── frameCapture.js      # 프레임 캡처 (FFmpeg)
+│   │   ├── faceLandmarks.js     # 얼굴 특징 추출 (TensorFlow.js)
+│   │   ├── frame_div.js         # 프레임 분할 로직
+│   │   └── videoMetadata.js     # 비디오 메타데이터 추출
 │   └── routes/
-│       └── video.js          # 비디오 API 라우트
-├── vercel.json               # Vercel 배포 설정
+│       └── video.js             # 비디오 API 라우트
+├── tmp/uploads/                 # 임시 업로드 디렉토리
+├── vercel.json                  # Vercel 배포 설정
 ├── package.json
-└── .env.example
+├── package-lock.json
+└── .env
 ```
 
 ---
 
-## 🚀 Vercel 배포
+## 🚀 배포
 
-### 배포 명령어
+### Railway 배포
+
+이 프로젝트는 Railway에서 실행되도록 구성되어 있습니다.
+
+```bash
+# Railway CLI 설치
+npm install -g @railway/cli
+
+# Railway 로그인
+railway login
+
+# 배포
+railway up
+```
+
+### Vercel 배포 (Serverless)
 
 ```bash
 vercel
 ```
 
-### 환경 변수 설정
+**환경 변수:**
+- Railway/Vercel 대시보드에서 환경 변수 설정 가능 (선택사항)
 
-Vercel 대시보드에서 환경 변수 설정:
-- `ALLOWED_ORIGINS`: CORS 허용 도메인
+---
+
+## 📝 개발 노트
+
+### 주요 기능
+
+1. **비디오 분석**: Gemini 2.5 Flash를 사용하여 비디오의 감정, 주인공 특징 추출
+2. **얼굴 인식**: TensorFlow.js의 BlazeFace 및 Face Landmarks Detection 모델 사용
+3. **프레임 캡처**: FFmpeg를 사용하여 특정 프레임을 1920x1080 해상도로 캡처
+4. **설명문 개선**: Gemini AI를 사용하여 템플릿 치환 및 문법 개선
+
+### 제한 사항
+
+- 비디오 파일 크기: 최대 100MB
+- 지원 형식: MP4, MOV, AVI, MKV, WebM, MPEG
+- Gemini API 키 필수 (사용자가 제공)
 
 ---

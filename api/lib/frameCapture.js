@@ -18,8 +18,9 @@ const execAsync = promisify(exec);
  * @param {number} options.frameNumber - 캡처할 프레임 번호
  * @param {number} options.fps - 비디오 FPS (기본값: 30)
  * @param {Array} options.bbox - 주인공 바운딩 박스 [{x, y}, {x, y}]
+ * @param {Object} options.point - 단일 포인트 좌표 {x, y}
  * @param {string} options.outputPath - 출력 이미지 경로 (선택사항)
- * @param {boolean} options.drawOverlay - 바운딩 박스 표시 여부 (기본값: false)
+ * @param {boolean} options.drawOverlay - 바운딩 박스/포인트 표시 여부 (기본값: false)
  * @returns {Promise<string>} 캡처된 이미지 파일 경로
  */
 async function captureFrame(options) {
@@ -28,6 +29,7 @@ async function captureFrame(options) {
     frameNumber,
     fps = 30,
     bbox = null,
+    point = null,
     outputPath = null,
     drawOverlay = false
   } = options;
@@ -67,8 +69,12 @@ async function captureFrame(options) {
     console.log('✅ 프레임 캡처 완료:', outputFile);
 
     // 오버레이 그리기 (요청된 경우)
-    if (drawOverlay && bbox) {
-      await drawBboxOverlay(outputFile, bbox, frameNumber, fps, timeSec);
+    if (drawOverlay) {
+      if (bbox) {
+        await drawBboxOverlay(outputFile, bbox, frameNumber, fps, timeSec);
+      } else if (point) {
+        await drawPointOverlay(outputFile, point, frameNumber, fps, timeSec);
+      }
     }
 
     return outputFile;
@@ -158,6 +164,84 @@ async function drawBboxOverlay(imagePath, bbox, frameNumber, fps, timeSec) {
 
   } catch (error) {
     console.warn('⚠️ 오버레이 그리기 실패:', error.message);
+    // 오버레이 실패는 치명적이지 않으므로 무시
+  }
+}
+
+/**
+ * 캡처된 이미지에 단일 포인트 마커 그리기
+ * Sharp를 사용하여 SVG 오버레이 추가
+ */
+async function drawPointOverlay(imagePath, point, frameNumber, fps, timeSec) {
+  try {
+    const x = point.x;
+    const y = point.y;
+
+    // SVG로 포인트 마커와 라벨 생성
+    const svg = `
+      <svg width="1920" height="1080">
+        <!-- 외부 원 (하얀색 테두리) -->
+        <circle cx="${x}" cy="${y}" r="15"
+                fill="none" stroke="white" stroke-width="4"/>
+        
+        <!-- 내부 원 (빨간색) -->
+        <circle cx="${x}" cy="${y}" r="10"
+                fill="red" stroke="white" stroke-width="2"/>
+        
+        <!-- 중심점 -->
+        <circle cx="${x}" cy="${y}" r="3"
+                fill="white"/>
+        
+        <!-- 십자선 (가로) -->
+        <line x1="${x - 20}" y1="${y}" x2="${x + 20}" y2="${y}"
+              stroke="red" stroke-width="2" opacity="0.8"/>
+        
+        <!-- 십자선 (세로) -->
+        <line x1="${x}" y1="${y - 20}" x2="${x}" y2="${y + 20}"
+              stroke="red" stroke-width="2" opacity="0.8"/>
+
+        <!-- 정보 라벨 배경 -->
+        <rect x="10" y="10" width="350" height="70"
+              fill="rgba(0,0,0,0.7)" rx="5"/>
+
+        <!-- 정보 텍스트 -->
+        <text x="20" y="35"
+              font-family="Arial, sans-serif"
+              font-size="18"
+              font-weight="bold"
+              fill="white">
+          Point: (${x}, ${y})
+        </text>
+        <text x="20" y="55"
+              font-family="Arial, sans-serif"
+              font-size="14"
+              fill="white">
+        </text>
+        <text x="20" y="70"
+              font-family="Arial, sans-serif"
+              font-size="14"
+              fill="white">
+          t=${timeSec.toFixed(1)}s, f=${frameNumber} @${fps}fps
+        </text>
+      </svg>
+    `;
+
+    // Sharp를 사용하여 이미지에 SVG 오버레이 합성
+    await sharp(imagePath)
+      .composite([{
+        input: Buffer.from(svg),
+        top: 0,
+        left: 0
+      }])
+      .toFile(imagePath + '.tmp');
+
+    // 원본 파일을 새 파일로 교체
+    await fs.rename(imagePath + '.tmp', imagePath);
+
+    console.log('✅ 포인트 오버레이 그리기 완료');
+
+  } catch (error) {
+    console.warn('⚠️ 포인트 오버레이 그리기 실패:', error.message);
     // 오버레이 실패는 치명적이지 않으므로 무시
   }
 }

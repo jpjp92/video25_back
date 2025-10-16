@@ -94,11 +94,26 @@ router.post('/analyze', upload.single('video'), async (req, res) => {
     // 임시 파일 삭제
     await fs.unlink(filePath);
 
-    // 결과 반환
-    res.json({
+    // 결과 반환 - start_time을 항상 소수점 형식으로 표현
+    res.setHeader('Content-Type', 'application/json');
+    
+    // JSON 직렬화 시 start_time이 정수여도 소수점 포함하도록 처리
+    const jsonString = JSON.stringify({
       success: true,
       data: result
+    }, (key, value) => {
+      // start_time 키인 경우 항상 소수점 1자리 이상 표현
+      if (key === 'start_time' && typeof value === 'number') {
+        // 정수인 경우 .0 추가, 아니면 그대로
+        return Number.isInteger(value) ? value.toFixed(1) : value;
+      }
+      return value;
     });
+    
+    // 문자열로 변환된 start_time을 다시 숫자로 (따옴표 제거)
+    const fixedJson = jsonString.replace(/"start_time":"(\d+\.\d+)"/g, '"start_time":$1');
+    
+    res.send(fixedJson);
 
   } catch (error) {
     console.error('비디오 분석 에러:', error);
@@ -168,7 +183,7 @@ router.post('/analyzer-desc', async (req, res) => {
     // 결과 반환
     res.json({
       success: true,
-      data: result  // { subject_description, combined_description }
+      data: result  // { subject_description, explanation }
     });
 
   } catch (error) {
@@ -203,6 +218,8 @@ router.post('/capture-frame', upload.single('video'), async (req, res) => {
     const bbox1Y = parseInt(req.body.bbox1Y) || null;
     const bbox2X = parseInt(req.body.bbox2X) || null;
     const bbox2Y = parseInt(req.body.bbox2Y) || null;
+    const pointX = parseInt(req.body.x) || null;
+    const pointY = parseInt(req.body.y) || null;
     const drawOverlay = req.body.drawOverlay === 'true';
 
     if (isNaN(frameNumber) || frameNumber < 0) {
@@ -219,16 +236,23 @@ router.post('/capture-frame', upload.single('video'), async (req, res) => {
     if (bbox1X !== null && bbox1Y !== null && bbox2X !== null && bbox2Y !== null) {
       console.log('  바운딩 박스:', `[{x: ${bbox1X}, y: ${bbox1Y}}, {x: ${bbox2X}, y: ${bbox2Y}}]`);
     }
+    if (pointX !== null && pointY !== null) {
+      console.log('  포인트:', `{x: ${pointX}, y: ${pointY}}`);
+    }
 
     // 프레임 캡처 - 2개의 포인트로 바운딩 박스 구성
     const bbox = (bbox1X !== null && bbox1Y !== null && bbox2X !== null && bbox2Y !== null)
       ? [{x: bbox1X, y: bbox1Y}, {x: bbox2X, y: bbox2Y}]
+      : null;
+    const point = (pointX !== null && pointY !== null)
+      ? {x: pointX, y: pointY}
       : null;
     capturedImagePath = await captureFrame({
       videoPath: filePath,
       frameNumber,
       fps,
       bbox,
+      point,
       drawOverlay
     });
 
@@ -250,6 +274,7 @@ router.post('/capture-frame', upload.single('video'), async (req, res) => {
         frameNumber,
         fps,
         bbox,
+        point,
         image: `data:image/png;base64,${imageBase64}`,
         resolution: '1920x1080'
       }
